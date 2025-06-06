@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Newsletter – Prochains événements</title>
+  <style>
+    /* Reset minimal */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f0f2f5;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .newsletter-container {
+      max-width: 800px;
+      width: 100%;
+      background-color: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    header {
+      background-color: #4a90e2;
+      padding: 30px 20px;
+      text-align: center;
+      color: #fff;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 500;
+    }
+
+    .event-list {
+      list-style: none;
+    }
+
+    .event-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 30px 20px;
+      transition: background 0.3s;
+    }
+    .event-item:hover {
+      background-color: #f9fbfd;
+    }
+    .event-item:nth-child(even) {
+      flex-direction: row-reverse;
+    }
+
+    .event-image {
+      flex: 0 0 200px;
+      margin-right: 20px;
+    }
+    .event-item:nth-child(even) .event-image {
+      margin-right: 0;
+      margin-left: 20px;
+    }
+    .event-image img {
+      width: 100%;
+      border-radius: 8px;
+      object-fit: cover;
+      height: 150px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .event-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .event-title {
+      font-size: 1.6rem;
+      color: #2a2a2a;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    .event-datetime,
+    .event-location {
+      font-size: 0.95rem;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .event-location {
+      font-weight: 500;
+    }
+
+    .event-desc {
+      font-size: 0.95rem;
+      color: #444;
+      margin-bottom: 12px;
+    }
+
+    .event-button {
+      align-self: flex-start;
+      background-color: red;
+      color: #fff;
+      text-decoration: none;
+      align-self: center;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+    .event-button:hover {
+      background-color: #3b78c2;
+    }
+
+    .separator {
+      height: 1px;
+      background-color: #e0e3e8;
+      margin: 0 20px;
+      border: none;
+    }
+
+    footer {
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #777;
+      background-color: #fafbfd;
+    }
+
+    @media (max-width: 600px) {
+      .event-item {
+        flex-direction: column !important;
+      }
+      .event-image {
+        width: 100%;
+        margin: 0 0 15px;
+      }
+      .event-item:nth-child(even) .event-image {
+        margin-left: 0;
+      }
+      .separator {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="newsletter-container">
+
+    <header>
+      <h1>Prochains événements du Kalepin</h1>
+    </header>
+
+    <ul class="event-list">
+      {% for event in events %}
+      <li class="event-item">
+
+        {% if event.picture_url %}
+        <div class="event-image">
+          <img src="{{ event.picture_url }}" alt="Photo de l’événement">
+        </div>
+        {% endif %}
+
+        <div class="event-content">
+          <div>
+            <h2 class="event-title">{{ event.title }}</h2>
+            <p class="event-datetime">{{ event.full_date }}</p>
+            {% if event.location %}
+            <p class="event-location">Lieu : {{ event.location }}</p>
+            {% endif %}
+            <p class="event-desc">{{ event.description }}</p>
+          </div>
+          {% if event.link %}
+          <a href="{{ event.link }}" class="event-button" target="_blank" rel="noopener">
+            Voir sur Kalepin
+          </a>
+          {% endif %}
+        </div>
+
+      </li>
+      {% if not loop.last %}
+      <hr class="separator">
+      {% endif %}
+      {% endfor %}
+    </ul>
+
+    <footer>
+      Envoyé le {{ date_now }}
+    </footer>
+
+  </div>
+</body>
+</html>
+
