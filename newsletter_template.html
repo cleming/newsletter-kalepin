@@ -13,9 +13,9 @@
 
     body {
       background-color: #f0f2f5;
-      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-family: "Helvetica Neue", Helvetica, sans-serif;
       color: #333;
-      display: flex;
+      text-align: left;
       justify-content: center;
       padding: 20px;
     }
@@ -25,31 +25,89 @@
       width: 100%;
       background-color: #fff;
       border-radius: 8px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
       overflow: hidden;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    }
 
     header {
-      background-color: #4a90e2;
+      background-color:#4B64F2;
       padding: 30px 20px;
       text-align: center;
       color: #fff;
     }
     header h1 {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 500;
     }
 
     .event-list {
       list-style: none;
+      text-align: left;
     }
 
-    .event-item {
-      display: flex;
-      align-items: flex-start;
-      padding: 30px 20px;
-      transition: background 0.3s;
-    }
+  .event-item {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 30px 20px;
+  transition: background 0.3s;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.event-image {
+  flex: 0 0 220px;
+  margin-right: 24px;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+}
+.event-image img {
+  width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  height: 150px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.event-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.event-button {
+  margin: 24px 0 0 0;
+  display: inline-block;
+  align-self: flex-start;
+  background-color: #000000;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.event-button:hover {
+  background-color: #ff7105;
+}
+
+/* Responsive : tout en colonne sur mobile */
+@media (max-width: 600px) {
+  .event-item {
+    flex-direction: column !important;
+    align-items: center;
+  }
+  .event-image {
+    width: 100%;
+    margin: 0 0 15px 0;
+  }
+}
+
     .event-item:hover {
       background-color: #f9fbfd;
     }
@@ -86,10 +144,21 @@
       margin-bottom: 8px;
       line-height: 1.2;
     }
-    .event-datetime,
+    .event-datetime {
+  display: inline-block;
+  background-color: #ff7105;
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  margin-top: 4px;
+  text-align: left;
+  font-weight: 500;
+}
     .event-location {
       font-size: 0.95rem;
-      color: #555;
+      color: #000000;
       margin-bottom: 6px;
     }
     .event-location {
@@ -104,7 +173,7 @@
 
     .event-button {
       align-self: flex-start;
-      background-color: red;
+      background-color: #000000;
       color: #fff;
       text-decoration: none;
       align-self: center;
@@ -114,7 +183,7 @@
       transition: background 0.3s;
     }
     .event-button:hover {
-      background-color: #3b78c2;
+      background-color: #3B62D9;
     }
 
     .separator {
@@ -150,39 +219,39 @@
   </style>
 </head>
 <body>
+  <img src="https://lafabrik-moly.fr/wp-content/uploads/2025/06/logo-kalepin.svg" alt="Le Kalepin" style="width: 230px; display: block; margin: 60px auto 32px auto;">
   <div class="newsletter-container">
-
     <header>
-      <h1>Prochains événements du Kalepin</h1>
-    </header>
+  <h1>LES PROCHAINS ÉVÉNEMENTS DES MONTS DU LYONNAIS</h1>
+</header>
 
     <ul class="event-list">
       {% for event in events %}
       <li class="event-item">
 
-        {% if event.picture_url %}
-        <div class="event-image">
-          <img src="{{ event.picture_url }}" alt="Photo de l’événement">
-        </div>
-        {% endif %}
+  {% if event.picture_url %}
+  <div class="event-image">
+    <img src="{{ event.picture_url }}" alt="Photo de l’événement">
+  </div>
+  {% endif %}
 
-        <div class="event-content">
-          <div>
-            <h2 class="event-title">{{ event.title }}</h2>
-            <p class="event-datetime">{{ event.full_date }}</p>
-            {% if event.location %}
-            <p class="event-location">Lieu : {{ event.location }}</p>
-            {% endif %}
-            <p class="event-desc">{{ event.description }}</p>
-          </div>
-          {% if event.link %}
-          <a href="{{ event.link }}" class="event-button" target="_blank" rel="noopener">
-            Voir sur Kalepin
-          </a>
-          {% endif %}
-        </div>
+  <div class="event-content">
+  <div>
+    <h2 class="event-title">{{ event.title }}</h2>
+    <p class="event-datetime">{{ event.full_date }}</p>
+    {% if event.location %}
+    <p class="event-location">Lieu : {{ event.location }}</p>
+    {% endif %}
+    <p class="event-desc">{{ event.description }}</p>
+    {% if event.link %}
+    <a href="{{ event.link }}" class="event-button" target="_blank" rel="noopener">
+      Voir sur Le Kalepin
+    </a>
+    {% endif %}
+  </div>
+</div>
+</li>
 
-      </li>
       {% if not loop.last %}
       <hr class="separator">
       {% endif %}
@@ -197,3 +266,5 @@
 </body>
 </html>
 
+
+<!-- End of newsletter_template.html -->
