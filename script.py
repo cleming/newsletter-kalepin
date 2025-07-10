@@ -100,7 +100,14 @@ def fetch_events(begins_on: str, ends_on: str, limit: int = QUERY_LIMIT):
     events = []
     for elem in data["data"]["searchEvents"]["elements"]:
         if elem.get("__typename") == "Event":
-            events.append(elem)
+            # Filtrage supplémentaire ici
+            begins_iso = elem.get("beginsOn")
+            if begins_iso:
+                dt = datetime.datetime.fromisoformat(begins_iso.replace("Z", "+00:00"))
+                dt_begins = datetime.datetime.fromisoformat(begins_on.replace("Z", "+00:00"))
+                dt_ends = datetime.datetime.fromisoformat(ends_on.replace("Z", "+00:00"))
+                if dt_begins <= dt < dt_ends:
+                    events.append(elem)
     return events
 
 def prepare_events_for_template(raw_events: list) -> list:
@@ -187,7 +194,7 @@ def render_newsletter(events: list, template_dir: str, template_name: str) -> st
 def main():
     try:
         # 1) Calcul de la fenêtre : aujourd’hui → +8 jours
-        begins_on, ends_on = get_time_window(days=8)
+        begins_on, ends_on = get_time_window(days=10)
         print(f"Récupération des événements entre {begins_on} et {ends_on}…", file=sys.stderr)
 
         # 2) Appel GraphQL pour récupérer les événements
@@ -195,6 +202,13 @@ def main():
         if not raw_events:
             print("Aucun événement trouvé dans la période demandée.", file=sys.stderr)
             sys.exit(0)
+
+        # Affichage des événements récupérés et leur date
+        for ev in raw_events:
+            print(f"{ev.get('title', 'Sans titre')} — {ev.get('beginsOn', 'Date inconnue')}")
+
+        # Tri des événements par date de début (ordre croissant)
+        raw_events.sort(key=lambda ev: ev.get('beginsOn', ''))
 
         # 3) Préparation pour le template (nettoyage + tronquage)
         events = prepare_events_for_template(raw_events)
