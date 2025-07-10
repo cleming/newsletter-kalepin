@@ -147,6 +147,10 @@ def prepare_events_for_template(raw_events: list) -> list:
         picture_url = ev.get("picture", {}).get("url")
         link        = ev.get("url") or ""
 
+        # Nettoyage de l'URL d'image pour Brevo : suppression des paramètres après le '?'
+        if picture_url and '?' in picture_url:
+            picture_url = picture_url.split('?', 1)[0]
+
         phys = ev.get("physicalAddress")
         if phys:
             part1    = phys.get("description") or ""
@@ -257,10 +261,17 @@ def log(msg):
 def envoyer_newsletter_brevo(test=False):
     try:
         import brevo_python
-        from brevo_python.rest import ApiException
-        from brevo_python.configuration import Configuration
-        from brevo_python.api.transactional_emails_api import TransactionalEmailsApi
-        from brevo_python.models.send_smtp_email import SendSmtpEmail
+        log(f"brevo_python path: {getattr(brevo_python, '__file__', 'inconnu')}")
+        log(f"brevo_python version: {getattr(brevo_python, '__version__', 'inconnue')}")
+        try:
+            from brevo_python.rest import ApiException
+            from brevo_python.configuration import Configuration
+            from brevo_python.api.email_campaigns_api import EmailCampaignsApi
+            from brevo_python.models.create_email_campaign import CreateEmailCampaign
+            # Suppression de l'import SendEmailCampaign car il n'existe pas dans cette version
+        except Exception as e:
+            log(f"Erreur lors de l'import d'une classe brevo_python : {e}")
+            return
     except ImportError:
         log("Le module 'brevo_python' n'est pas installé. Installez-le avec 'pip install brevo-python'")
         return
@@ -277,7 +288,6 @@ def envoyer_newsletter_brevo(test=False):
     test_email = "test@gibaud.info"
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Utilisation du HTML inliné pour l'envoi
     output_path = os.path.join(script_dir, "newsletter_events_inlined.html")
     log(f"Lecture du HTML généré depuis {output_path}")
     with open(output_path, "r", encoding="utf-8") as f:
@@ -285,41 +295,44 @@ def envoyer_newsletter_brevo(test=False):
 
     configuration = Configuration()
     configuration.api_key['api-key'] = api_key
-    api_instance = TransactionalEmailsApi(brevo_python.ApiClient(configuration))
+    api_instance = EmailCampaignsApi(brevo_python.ApiClient(configuration))
 
     if test:
         log(f"Préparation d'un envoi de TEST à {test_email}")
-        send_smtp_email = SendSmtpEmail(
-            to=[{"email": test_email, "name": "Test"}],
-            sender={"email": sender_email, "name": sender_name},
+        # En mode test, on envoie à la liste de test (doit contenir l'email de test)
+        email_campaign = CreateEmailCampaign(
+            tag="Newsletter Kalepin [TEST]",
+            sender={"name": sender_name, "email": sender_email},
+            name="[TEST] Kalepin : les prochains événements",
             subject="[TEST] kalepin",
-            html_content=html_content
+            html_content=html_content,
+            recipients={"listIds": [list_id]},
+            inline_image_activation=False
         )
     else:
-        log(f"Préparation d'un envoi à la liste Brevo ID {list_id}")
-        send_smtp_email = SendSmtpEmail(
-            list_ids=[list_id],
-            sender={"email": sender_email, "name": sender_name},
+        log(f"Préparation d'une campagne à la liste Brevo ID {list_id}")
+        email_campaign = CreateEmailCampaign(
+            tag="Newsletter Kalepin",
+            sender={"name": sender_name, "email": sender_email},
+            name="Kalepin : les prochains événements",
             subject="Kalepin : les prochains événements",
-            html_content=html_content
+            html_content=html_content,
+            recipients={"listIds": [list_id]},
+            inline_image_activation=False
         )
 
     try:
-        log("Envoi de l'email en cours...")
-        response = api_instance.send_transac_email(send_smtp_email)
-        # Log détaillé de confirmation
-        if test:
-            log(f"Newsletter de TEST envoyée à {test_email} !")
-            log(f"Sujet : {send_smtp_email.subject}")
-            log(f"ID du message Brevo : {getattr(response, 'message_id', None)}")
-            log(f"Réponse brute : {response}")
-        else:
-            log(f"Newsletter envoyée à la liste Brevo ID {list_id} !")
-            log(f"Sujet : {send_smtp_email.subject}")
-            log(f"ID du message Brevo : {getattr(response, 'message_id', None)}")
-            log(f"Réponse brute : {response}")
+        # Création de la campagne
+        log("Création de la campagne...")
+        campaign = api_instance.create_email_campaign(email_campaign)
+        log(f"Campagne créée, ID : {campaign.id}")
+
+        # Envoi immédiat de la campagne (sans objet SendEmailCampaign)
+        log("Envoi immédiat de la campagne...")
+        api_instance.send_email_campaign_now(campaign.id)
+        log("Campagne envoyée à la liste !")
     except ApiException as e:
-        log(f"Erreur lors de l'envoi : {e}")
+        log(f"Erreur lors de la création ou de l'envoi de la campagne : {e}")
         if hasattr(e, 'body'):
             log(f"Détail de l'erreur : {e.body}")
 
@@ -331,6 +344,5 @@ if __name__ == "__main__":
         envoyer_newsletter_brevo(test=True)
     else:
         log("Pour faire un test d'envoi, lancez : python script.py --test")
-        # Décommentez la ligne suivante pour envoyer automatiquement à la liste après génération :
-        # envoyer_newsletter_brevo(test=False)
+        envoyer_newsletter_brevo(test=False)
 
