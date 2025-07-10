@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup  # Pour nettoyer et tronquer la description
 from dotenv import load_dotenv
 load_dotenv()
 
+from premailer import transform
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
@@ -189,6 +191,13 @@ def render_newsletter(events: list, template_dir: str, template_name: str) -> st
     now_paris = datetime.datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d %H:%M")
     return template.render(events=events, date_now=now_paris)
 
+def inline_css(input_html_path, output_html_path):
+    with open(input_html_path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    inlined_html = transform(html)
+    with open(output_html_path, 'w', encoding='utf-8') as f:
+        f.write(inlined_html)
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  PROGRAMME PRINCIPAL
 # ─────────────────────────────────────────────────────────────────────────────
@@ -229,6 +238,11 @@ def main():
             f.write(html_output)
         print(f"Le fichier '{output_path}' a été généré avec succès.", file=sys.stderr)
 
+        # 6) Transformation du HTML pour email (inline CSS)
+        inlined_output_path = os.path.join(script_dir, "newsletter_events_inlined.html")
+        inline_css(output_path, inlined_output_path)
+        print(f"Le fichier '{inlined_output_path}' (CSS inline) a été généré.", file=sys.stderr)
+
     except Exception as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         sys.exit(1)
@@ -263,7 +277,8 @@ def envoyer_newsletter_brevo(test=False):
     test_email = "test@gibaud.info"
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(script_dir, OUTPUT_FILENAME)
+    # Utilisation du HTML inliné pour l'envoi
+    output_path = os.path.join(script_dir, "newsletter_events_inlined.html")
     log(f"Lecture du HTML généré depuis {output_path}")
     with open(output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
