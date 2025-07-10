@@ -9,6 +9,8 @@ import sys
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from bs4 import BeautifulSoup  # Pour nettoyer et tronquer la description
+from dotenv import load_dotenv
+load_dotenv()
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CONFIGURATION
@@ -231,6 +233,89 @@ def main():
         print(f"Erreur : {exc}", file=sys.stderr)
         sys.exit(1)
 
+def log(msg):
+    print(f"[LOG] {msg}", file=sys.stderr)
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  ENVOI DE LA NEWSLETTER VIA BREVO
+# ─────────────────────────────────────────────────────────────────────────────
+
+def envoyer_newsletter_brevo(test=False):
+    try:
+        import brevo_python
+        from brevo_python.rest import ApiException
+        from brevo_python.configuration import Configuration
+        from brevo_python.api.transactional_emails_api import TransactionalEmailsApi
+        from brevo_python.models.send_smtp_email import SendSmtpEmail
+    except ImportError:
+        log("Le module 'brevo_python' n'est pas installé. Installez-le avec 'pip install brevo-python'")
+        return
+
+    # Lecture des variables d'environnement
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("BREVO_SENDER_EMAIL")
+    sender_name = "Le Kalepin"
+    list_id = os.getenv("BREVO_LIST_ID")
+    if not api_key or not sender_email or not list_id:
+        log("Variables d'environnement manquantes : BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_LIST_ID")
+        return
+    list_id = int(list_id)
+    test_email = "test@gibaud.info"
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(script_dir, OUTPUT_FILENAME)
+    log(f"Lecture du HTML généré depuis {output_path}")
+    with open(output_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    configuration = Configuration()
+    configuration.api_key['api-key'] = api_key
+    api_instance = TransactionalEmailsApi(brevo_python.ApiClient(configuration))
+
+    if test:
+        log(f"Préparation d'un envoi de TEST à {test_email}")
+        send_smtp_email = SendSmtpEmail(
+            to=[{"email": test_email, "name": "Test"}],
+            sender={"email": sender_email, "name": sender_name},
+            subject="[TEST] kalepin",
+            html_content=html_content
+        )
+    else:
+        log(f"Préparation d'un envoi à la liste Brevo ID {list_id}")
+        send_smtp_email = SendSmtpEmail(
+            list_ids=[list_id],
+            sender={"email": sender_email, "name": sender_name},
+            subject="Kalepin : les prochains événements",
+            html_content=html_content
+        )
+
+    try:
+        log("Envoi de l'email en cours...")
+        response = api_instance.send_transac_email(send_smtp_email)
+        # Log détaillé de confirmation
+        if test:
+            log(f"Newsletter de TEST envoyée à {test_email} !")
+            log(f"Sujet : {send_smtp_email.subject}")
+            log(f"ID du message Brevo : {getattr(response, 'message_id', None)}")
+            log(f"Réponse brute : {response}")
+        else:
+            log(f"Newsletter envoyée à la liste Brevo ID {list_id} !")
+            log(f"Sujet : {send_smtp_email.subject}")
+            log(f"ID du message Brevo : {getattr(response, 'message_id', None)}")
+            log(f"Réponse brute : {response}")
+    except ApiException as e:
+        log(f"Erreur lors de l'envoi : {e}")
+        if hasattr(e, 'body'):
+            log(f"Détail de l'erreur : {e.body}")
+
 if __name__ == "__main__":
     main()
+    # Pour proposer un test d'envoi :
+    if '--test' in sys.argv:
+        log("Mode TEST activé : la newsletter sera envoyée uniquement à l'adresse de test.")
+        envoyer_newsletter_brevo(test=True)
+    else:
+        log("Pour faire un test d'envoi, lancez : python script.py --test")
+        # Décommentez la ligne suivante pour envoyer automatiquement à la liste après génération :
+        # envoyer_newsletter_brevo(test=False)
 
