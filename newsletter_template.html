@@ -2,24 +2,51 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Newsletter – Prochains événements</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .event-table {
+        display: block !important;
+        width: 100% !important;
+      }
+      .event-table tbody,
+      .event-table tr,
+      .event-table td {
+        display: block !important;
+        width: 100% !important;
+      }
+      .event-image {
+        text-align: center !important;
+        padding: 20px 20px 10px 20px !important;
+      }
+      .event-content {
+        padding: 10px 20px 20px 20px !important;
+      }
+      .event-image img {
+        width: 100% !important;
+        height: auto !important;
+        max-width: 300px !important;
+      }
+    }
+  </style>
 </head>
 <body style="background-color:#f0f2f5; font-family:Helvetica,Arial,sans-serif; color:#333; padding:20px;">
   <div style="max-width:800px; margin:0 auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 16px #eee;">
     <div style="text-align:center; padding:40px 20px 20px 20px; background:#4B64F2;">
-      <img src="https://lafabrik-moly.fr/wp-content/uploads/2025/06/logo-kalepin.svg" alt="Le Kalepin" style="width:230px; display:block; margin:0 auto 24px auto;">
+      <img src="https://lafabrik-moly.fr/wp-content/uploads/2025/07/logo-kalepin-01.png" alt="Le Kalepin" style="width:230px; display:block; margin:0 auto 24px auto;">
       <h1 style="color:#fff; font-size:24px; font-weight:500; margin:0;">LES PROCHAINS ÉVÉNEMENTS DES MONTS DU LYONNAIS</h1>
     </div>
     <div style="padding:32px 10px 10px 10px;">
       {% for event in events %}
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px; background:#fff; border-radius:8px; border:1px solid #eee;">
+      <table class="event-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px; background:#fff; border-radius:8px; border:1px solid #eee;">
         <tr>
           {% if event.picture_url %}
-          <td width="220" valign="top" style="padding:20px;">
-            <img src="{{ event.picture_url }}" alt="Photo de l’événement" width="200" height="150" style="display:block; width:200px; height:150px;">
+          <td class="event-image" width="220" valign="top" style="padding:20px;">
+            <img src="{{ event.picture_url }}" alt="Photo de l'événement" width="200" height="150" style="display:block; width:200px; height:150px;">
           </td>
           {% endif %}
-          <td valign="top" style="padding:20px;">
+          <td class="event-content" valign="top" style="padding:20px;">
             <h2 style="font-size:20px; color:#2a2a2a; margin:0 0 8px 0; line-height:1.2;">{{ event.title }}</h2>
             <div style="background:#ff7105; color:#fff; padding:6px 16px; border-radius:20px; font-size:15px; margin-bottom:12px; margin-top:4px; display:inline-block; font-weight:500;">
               {{ event.full_date }}
