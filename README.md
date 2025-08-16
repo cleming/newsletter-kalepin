@@ -1,23 +1,27 @@
 # Newsletter Kalepin
 
-Script Python pour générer et envoyer automatiquement une newsletter avec les événements du Kalepin via l'API Mobilizon et Brevo.
+Automated Python script to generate and send newsletters with Mobilizon events via Jinja2 templates and Brevo email service.
+
+## About
+
+This project was created for the French Mobilizon instance ["Le Kalepin"](https://lekalepin.fr) - a cultural agenda for the Monts du Lyonnais region in France. While the script can be adapted for other Mobilizon instances, you'll need to translate the newsletter template and adjust the date formatting to match your locale.
 
 ## Description
 
-Ce script récupère les événements à venir depuis l'API GraphQL de Mobilizon (lekalepin.fr), génère une newsletter HTML avec template Jinja2, et l'envoie via Brevo.
+This script fetches upcoming events from Mobilizon's GraphQL API, generates an HTML newsletter using Jinja2 templates, and sends it via Brevo email service.
 
-## Fonctionnalités
+## Features
 
-- Récupération automatique des événements via l'API Mobilizon
-- Génération de newsletter HTML avec template personnalisable
-- Nettoyage et tronquage des descriptions d'événements
-- Conversion des dates UTC vers le fuseau Europe/Paris
-- Inline CSS pour compatibilité email
-- Envoi via Brevo avec support mode test
+- Automatic event fetching via Mobilizon API
+- HTML newsletter generation with customizable Jinja2 templates
+- Event description cleaning and truncation
+- UTC to Europe/Paris timezone conversion
+- Inline CSS for email compatibility
+- Brevo integration with test mode support
 
 ## Installation
 
-### Locale
+### Local Setup
 
 ```bash
 pip install -r requirements.txt
@@ -30,7 +34,7 @@ docker build -t newsletter-kalepin .
 docker run --env-file .env newsletter-kalepin
 ```
 
-### Image pré-construite
+### Pre-built Image
 
 ```bash
 docker pull ghcr.io/cleming/newsletter-kalepin:main
@@ -39,7 +43,7 @@ docker run --env-file .env ghcr.io/cleming/newsletter-kalepin:main
 
 ## Configuration
 
-Créez un fichier `.env` avec les variables suivantes :
+Create a `.env` file with the following variables:
 
 ```env
 BREVO_API_KEY=your_brevo_api_key
@@ -47,45 +51,75 @@ BREVO_SENDER_EMAIL=your_sender_email
 BREVO_LIST_ID=your_list_id
 ```
 
-## Utilisation
+### Adapting for Other Mobilizon Instances
 
-### Mode normal
+To use this script with a different Mobilizon instance:
+
+1. Change `MOBILIZON_API_URL` in `script.py` to your instance's API endpoint
+2. Update the newsletter template (`newsletter_template.html`) with your preferred language
+3. Modify the date formatting in `prepare_events_for_template()` function (currently uses French day/month names)
+4. Adjust timezone conversion if needed (currently converts to Europe/Paris)
+
+## Usage
+
+### Normal mode
 ```bash
 python script.py
 ```
 
-### Mode test
+### Test mode
 ```bash
 python script.py --test
 ```
 
-Le mode test envoie la newsletter uniquement à l'adresse de test configurée.
+Test mode sends the newsletter only to the configured test email address.
 
-## Fichiers générés
+## Generated Files
 
-- `newsletter_events.html` : Newsletter avec CSS externe
-- `newsletter_events_inlined.html` : Newsletter avec CSS inline (pour email)
+- `newsletter_events.html`: Newsletter with external CSS
+- `newsletter_events_inlined.html`: Newsletter with inline CSS (email-ready)
 
 ## CI/CD
 
-Le projet inclut une GitHub Action qui :
-- Build automatiquement l'image Docker sur push vers main
-- Push vers GitHub Container Registry (ghcr.io)
-- Support architecture AMD64
-- Cache optimisé pour des builds rapides
+The project includes a GitHub Action that:
+- Automatically builds Docker image on push to main
+- Pushes to GitHub Container Registry (ghcr.io)
+- Supports AMD64 architecture
+- Optimized caching for fast builds
 
-## Template
+## Template Customization
 
-Modifiez `newsletter_template.html` pour personnaliser l'apparence de la newsletter. Le template reçoit :
-- `events` : liste des événements formatés
-- `date_now` : date/heure de génération
+Modify `newsletter_template.html` to customize the newsletter appearance. The template receives:
+- `events`: formatted events list
+- `date_now`: generation timestamp
 
-## Structure des événements
+## Event Structure
 
-Chaque événement contient :
-- `title` : titre de l'événement
-- `description` : description tronquée (300 caractères max)
-- `full_date` : date formatée en français
-- `picture_url` : URL de l'image (nettoyée pour Brevo)
-- `location` : lieu de l'événement
-- `link` : lien vers l'événement
+Each event contains:
+- `title`: event title
+- `description`: truncated description (300 chars max)
+- `full_date`: formatted date (currently in French)
+- `picture_url`: image URL (cleaned for Brevo compatibility)
+- `location`: event location
+- `link`: event URL
+
+## Development
+
+### Linting
+
+The project uses Black, isort, flake8, and mypy for code quality:
+
+```bash
+black script.py
+isort script.py
+flake8 script.py
+mypy script.py
+```
+
+Configuration files:
+- `pyproject.toml`: Black and isort settings
+- `.flake8`: Flake8 configuration
+
+### Requirements
+
+The project uses pinned dependencies for reproducible builds. Development dependencies (linting tools) are included in `requirements.txt`.
