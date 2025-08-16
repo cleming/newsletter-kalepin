@@ -156,7 +156,7 @@ def prepare_events_for_template(raw_events: list) -> list:
         heure = dt_paris.hour
         minute = dt_paris.minute
         minute_str = f"{minute:02d}"
-        full_date = f"{jour_nom} {jour_num} {mois_nom} {annee} à {heure} h {minute_str}"
+        full_date = f"{jour_nom} {jour_num} {mois_nom} {annee} à {heure}h{minute_str}"
 
         prepared.append(
             {
