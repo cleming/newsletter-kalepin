@@ -33,8 +33,8 @@ docker run --env-file .env newsletter-kalepin
 ### Image pré-construite
 
 ```bash
-docker pull ghcr.io/{username}/newsletter-kalepin:latest
-docker run --env-file .env ghcr.io/{username}/newsletter-kalepin:latest
+docker pull ghcr.io/cleming/newsletter-kalepin:main
+docker run --env-file .env ghcr.io/cleming/newsletter-kalepin:main
 ```
 
 ## Configuration
@@ -69,9 +69,9 @@ Le mode test envoie la newsletter uniquement à l'adresse de test configurée.
 ## CI/CD
 
 Le projet inclut une GitHub Action qui :
-- Build automatiquement l'image Docker
+- Build automatiquement l'image Docker sur push vers main
 - Push vers GitHub Container Registry (ghcr.io)
-- Support multi-architecture (amd64/arm64)
+- Support architecture AMD64
 - Cache optimisé pour des builds rapides
 
 ## Template
