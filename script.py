@@ -324,9 +324,7 @@ def send_newsletter_brevo(test=False):
 if __name__ == "__main__":
     main()
     if "--test" in sys.argv:
-        log(
-            "TEST mode enabled: newsletter will be sent only to test address."
-        )
+        log("TEST mode enabled: newsletter will be sent only to test address.")
         send_newsletter_brevo(test=True)
     else:
         log("To send a test, run: python script.py --test")
