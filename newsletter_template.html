@@ -75,7 +75,7 @@
         <tr>
           {% if event.picture_url %}
           <td class="event-image" width="220" valign="top" style="padding:20px;">
-            <img src="{{ event.picture_url }}" alt="Photo de l'événement" width="200" height="150" style="display:block; width:200px; height:150px;">
+            <img src="{{ event.picture_url }}" alt="Photo de l'événement" style="display:block; max-width:200px; height:auto;">
           </td>
           {% endif %}
           <td class="event-content" valign="top" style="padding:20px; overflow:hidden;">
