@@ -4,37 +4,23 @@
 import datetime
 import os
 import sys
-from zoneinfo import ZoneInfo  # Python 3.9+
+from zoneinfo import ZoneInfo
 
 import requests
-from bs4 import BeautifulSoup  # Pour nettoyer et tronquer la description
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from premailer import transform
 
 load_dotenv()
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
-
 MOBILIZON_API_URL = "https://lekalepin.fr/api"
 QUERY_LIMIT = 100
 TEMPLATE_FILENAME = "newsletter_template.html"
 OUTPUT_FILENAME = "newsletter_events.html"
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  FONCTIONS UTILITAIRES
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 def sanitize_html(raw_html: str) -> str:
-    """
-    Prend une chaîne HTML brute (par exemple event['description']),
-    l'encapsule dans un <div> fictif, la parse avec html5lib (via BeautifulSoup),
-    puis renvoie uniquement le contenu intérieur de ce <div>, de sorte que
-    toutes les balises ouvertes dans raw_html soient fermées proprement.
-    """
     wrapper = f"<div>{raw_html}</div>"
     soup = BeautifulSoup(wrapper, "html5lib")
     div = soup.find("div")
@@ -43,11 +29,6 @@ def sanitize_html(raw_html: str) -> str:
 
 
 def get_time_window(days: int = 8):
-    """
-    Renvoie un tuple (beginsOn_iso, endsOn_iso) en UTC,
-    couvrant de maintenant (inclus) à maintenant + days jours (exclus).
-    Format 'YYYY-MM-DDTHH:MM:SSZ'.
-    """
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     ends_utc = now_utc + datetime.timedelta(days=days)
 
@@ -57,11 +38,6 @@ def get_time_window(days: int = 8):
 
 
 def build_graphql_query():
-    """
-    Requête GraphQL avec inline fragment sur le type Event,
-    pour récupérer title, description, beginsOn, picture.url,
-    url, et physicalAddress (description + locality).
-    """
     return """
     query SearchEventsInWindow($beginsOn: DateTime, $endsOn: DateTime, $limit: Int) {
       searchEvents(beginsOn: $beginsOn, endsOn: $endsOn, limit: $limit) {
@@ -89,11 +65,6 @@ def build_graphql_query():
 
 
 def fetch_events(begins_on: str, ends_on: str, limit: int = QUERY_LIMIT):
-    """
-    Envoie la requête GraphQL (POST JSON) à l'API Mobilizon pour récupérer
-    les événements dans l'intervalle [begins_on, ends_on].
-    Retourne la liste des objets de type Event ou lève une exception en cas d'erreur.
-    """
     query = build_graphql_query()
     variables = {"beginsOn": begins_on, "endsOn": ends_on, "limit": limit}
     payload = {"query": query, "variables": variables}
@@ -103,12 +74,11 @@ def fetch_events(begins_on: str, ends_on: str, limit: int = QUERY_LIMIT):
     resp.raise_for_status()
     data = resp.json()
     if "errors" in data:
-        raise RuntimeError(f"Erreur GraphQL : {data['errors']}")
+        raise RuntimeError(f"GraphQL error: {data['errors']}")
 
     events = []
     for elem in data["data"]["searchEvents"]["elements"]:
         if elem.get("__typename") == "Event":
-            # Filtrage supplémentaire ici
             begins_iso = elem.get("beginsOn")
             if begins_iso:
                 dt = datetime.datetime.fromisoformat(begins_iso.replace("Z", "+00:00"))
@@ -124,10 +94,6 @@ def fetch_events(begins_on: str, ends_on: str, limit: int = QUERY_LIMIT):
 
 
 def prepare_events_for_template(raw_events: list) -> list:
-    """
-    Transforme la liste brute d'événements GraphQL en une liste de dicts
-    prêts à être passés au template Jinja2, en nettoyant et tronquant la description à 300 caractères.
-    """
     jours_semaine = [
         "Lundi",
         "Mardi",
@@ -155,13 +121,11 @@ def prepare_events_for_template(raw_events: list) -> list:
 
     prepared = []
     for ev in raw_events:
-        title = ev.get("title", "Sans titre")
+        title = ev.get("title", "Untitled")
 
-        # 1) Nettoyer le HTML brut de la description
         raw_desc = ev.get("description") or ""
         cleaned_html = sanitize_html(raw_desc)
 
-        # 2) Extraire le texte brut et le tronquer à 300 caractères
         text_only = BeautifulSoup(cleaned_html, "html.parser").get_text()
         if len(text_only) > 300:
             truncated = text_only[:300].rstrip() + " …"
@@ -172,7 +136,6 @@ def prepare_events_for_template(raw_events: list) -> list:
         picture_url = ev.get("picture", {}).get("url")
         link = ev.get("url") or ""
 
-        # Nettoyage de l'URL d'image pour Brevo : suppression des paramètres après le '?'
         if picture_url and "?" in picture_url:
             picture_url = picture_url.split("?", 1)[0]
 
@@ -184,7 +147,6 @@ def prepare_events_for_template(raw_events: list) -> list:
         else:
             location = ""
 
-        # Conversion UTC → Europe/Paris
         dt_utc = datetime.datetime.fromisoformat(begins_iso.replace("Z", "+00:00"))
         dt_paris = dt_utc.astimezone(ZoneInfo("Europe/Paris"))
         jour_nom = jours_semaine[dt_paris.weekday()]
@@ -199,7 +161,7 @@ def prepare_events_for_template(raw_events: list) -> list:
         prepared.append(
             {
                 "title": title,
-                "description": truncated,  # Texte brut tronqué à 300 car.
+                "description": truncated,
                 "full_date": full_date,
                 "picture_url": picture_url,
                 "location": location,
@@ -211,9 +173,6 @@ def prepare_events_for_template(raw_events: list) -> list:
 
 
 def render_newsletter(events: list, template_dir: str, template_name: str) -> str:
-    """
-    Utilise Jinja2 pour charger le template et renvoyer la chaîne HTML générée.
-    """
     env = Environment(
         loader=FileSystemLoader(searchpath=template_dir),
         autoescape=select_autoescape(["html", "xml"]),
@@ -234,60 +193,47 @@ def inline_css(input_html_path, output_html_path):
         f.write(inlined_html)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  PROGRAMME PRINCIPAL
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 def main():
     try:
-        # 1) Calcul de la fenêtre : aujourd’hui → +8 jours
         begins_on, ends_on = get_time_window(days=10)
         print(
-            f"Récupération des événements entre {begins_on} et {ends_on}…",
+            f"Fetching events between {begins_on} and {ends_on}...",
             file=sys.stderr,
         )
 
-        # 2) Appel GraphQL pour récupérer les événements
         raw_events = fetch_events(begins_on, ends_on)
         if not raw_events:
-            print("Aucun événement trouvé dans la période demandée.", file=sys.stderr)
+            print("No events found in the requested period.", file=sys.stderr)
             sys.exit(0)
 
-        # Affichage des événements récupérés et leur date
         for ev in raw_events:
             print(
-                f"{ev.get('title', 'Sans titre')} — {ev.get('beginsOn', 'Date inconnue')}"
+                f"{ev.get('title', 'Untitled')} — {ev.get('beginsOn', 'Unknown date')}"
             )
 
-        # Tri des événements par date de début (ordre croissant)
         raw_events.sort(key=lambda ev: ev.get("beginsOn", ""))
 
-        # 3) Préparation pour le template (nettoyage + tronquage)
         events = prepare_events_for_template(raw_events)
 
-        # 4) Rendu Jinja2
         script_dir = os.path.dirname(os.path.abspath(__file__))
         html_output = render_newsletter(
             events=events, template_dir=script_dir, template_name=TEMPLATE_FILENAME
         )
 
-        # 5) Écriture du fichier HTML final
         output_path = os.path.join(script_dir, OUTPUT_FILENAME)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_output)
-        print(f"Le fichier '{output_path}' a été généré avec succès.", file=sys.stderr)
+        print(f"File '{output_path}' generated successfully.", file=sys.stderr)
 
-        # 6) Transformation du HTML pour email (inline CSS)
         inlined_output_path = os.path.join(script_dir, "newsletter_events_inlined.html")
         inline_css(output_path, inlined_output_path)
         print(
-            f"Le fichier '{inlined_output_path}' (CSS inline) a été généré.",
+            f"File '{inlined_output_path}' (inline CSS) generated.",
             file=sys.stderr,
         )
 
     except Exception as exc:
-        print(f"Erreur : {exc}", file=sys.stderr)
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -295,41 +241,34 @@ def log(msg):
     print(f"[LOG] {msg}", file=sys.stderr)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  ENVOI DE LA NEWSLETTER VIA BREVO
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def envoyer_newsletter_brevo(test=False):
+def send_newsletter_brevo(test=False):
     try:
         import brevo_python
 
-        log(f"brevo_python path: {getattr(brevo_python, '__file__', 'inconnu')}")
-        log(f"brevo_python version: {getattr(brevo_python, '__version__', 'inconnue')}")
+        log(f"brevo_python path: {getattr(brevo_python, '__file__', 'unknown')}")
+        log(f"brevo_python version: {getattr(brevo_python, '__version__', 'unknown')}")
         try:
             from brevo_python.api.email_campaigns_api import EmailCampaignsApi
             from brevo_python.configuration import Configuration
             from brevo_python.models.create_email_campaign import CreateEmailCampaign
             from brevo_python.rest import ApiException
 
-            # Suppression de l'import SendEmailCampaign car il n'existe pas dans cette version
         except Exception as e:
-            log(f"Erreur lors de l'import d'une classe brevo_python : {e}")
+            log(f"Error importing brevo_python class: {e}")
             return
     except ImportError:
         log(
-            "Le module 'brevo_python' n'est pas installé. Installez-le avec 'pip install brevo-python'"
+            "The 'brevo_python' module is not installed. Install it with 'pip install brevo-python'"
         )
         return
 
-    # Lecture des variables d'environnement
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("BREVO_SENDER_EMAIL")
     sender_name = "Le Kalepin"
     list_id = os.getenv("BREVO_LIST_ID")
     if not api_key or not sender_email or not list_id:
         log(
-            "Variables d'environnement manquantes : BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_LIST_ID"
+            "Missing environment variables: BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_LIST_ID"
         )
         return
     list_id = int(list_id)
@@ -337,7 +276,7 @@ def envoyer_newsletter_brevo(test=False):
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, "newsletter_events_inlined.html")
-    log(f"Lecture du HTML généré depuis {output_path}")
+    log(f"Reading generated HTML from {output_path}")
     with open(output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
 
@@ -346,8 +285,7 @@ def envoyer_newsletter_brevo(test=False):
     api_instance = EmailCampaignsApi(brevo_python.ApiClient(configuration))
 
     if test:
-        log(f"Préparation d'un envoi de TEST à {test_email}")
-        # En mode test, on envoie à la liste de test (doit contenir l'email de test)
+        log(f"Preparing TEST send to {test_email}")
         email_campaign = CreateEmailCampaign(
             tag="Newsletter Kalepin [TEST]",
             sender={"name": sender_name, "email": sender_email},
@@ -358,7 +296,7 @@ def envoyer_newsletter_brevo(test=False):
             inline_image_activation=False,
         )
     else:
-        log(f"Préparation d'une campagne à la liste Brevo ID {list_id}")
+        log(f"Preparing campaign for Brevo list ID {list_id}")
         email_campaign = CreateEmailCampaign(
             tag="Newsletter Kalepin",
             sender={"name": sender_name, "email": sender_email},
@@ -370,29 +308,26 @@ def envoyer_newsletter_brevo(test=False):
         )
 
     try:
-        # Création de la campagne
-        log("Création de la campagne...")
+        log("Creating campaign...")
         campaign = api_instance.create_email_campaign(email_campaign)
-        log(f"Campagne créée, ID : {campaign.id}")
+        log(f"Campaign created, ID: {campaign.id}")
 
-        # Envoi immédiat de la campagne (sans objet SendEmailCampaign)
-        log("Envoi immédiat de la campagne...")
+        log("Sending campaign immediately...")
         api_instance.send_email_campaign_now(campaign.id)
-        log("Campagne envoyée à la liste !")
+        log("Campaign sent to list!")
     except ApiException as e:
-        log(f"Erreur lors de la création ou de l'envoi de la campagne : {e}")
+        log(f"Error creating or sending campaign: {e}")
         if hasattr(e, "body"):
-            log(f"Détail de l'erreur : {e.body}")
+            log(f"Error details: {e.body}")
 
 
 if __name__ == "__main__":
     main()
-    # Pour proposer un test d'envoi :
     if "--test" in sys.argv:
         log(
-            "Mode TEST activé : la newsletter sera envoyée uniquement à l'adresse de test."
+            "TEST mode enabled: newsletter will be sent only to test address."
         )
-        envoyer_newsletter_brevo(test=True)
+        send_newsletter_brevo(test=True)
     else:
-        log("Pour faire un test d'envoi, lancez : python script.py --test")
-        envoyer_newsletter_brevo(test=False)
+        log("To send a test, run: python script.py --test")
+        send_newsletter_brevo(test=False)
