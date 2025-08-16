@@ -2,6 +2,10 @@
 
 Automated Python script to generate and send newsletters with Mobilizon events via Jinja2 templates and Brevo email service.
 
+## Screenshot
+
+![Newsletter example](docs/newsletter-screenshot.png)
+
 ## About
 
 This project was created for the French Mobilizon instance ["Le Kalepin"](https://lekalepin.fr) - a cultural agenda for the Monts du Lyonnais region in France. While the script can be adapted for other Mobilizon instances, you'll need to translate the newsletter template and adjust the date formatting to match your locale.
