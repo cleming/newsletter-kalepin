@@ -133,7 +133,8 @@ def prepare_events_for_template(raw_events: list) -> list:
             truncated = text_only
 
         begins_iso = ev.get("beginsOn")
-        picture_url = ev.get("picture", {}).get("url")
+        picture = ev.get("picture")
+        picture_url = picture.get("url") if picture else None
         link = ev.get("url") or ""
 
         if picture_url and "?" in picture_url:
