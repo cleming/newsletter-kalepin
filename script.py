@@ -196,7 +196,7 @@ def inline_css(input_html_path, output_html_path):
 
 def main():
     try:
-        begins_on, ends_on = get_time_window(days=10)
+        begins_on, ends_on = get_time_window(days=12)
         print(
             f"Fetching events between {begins_on} and {ends_on}...",
             file=sys.stderr,
