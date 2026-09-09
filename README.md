@@ -1,6 +1,6 @@
 # Newsletter Kalepin
 
-Automated Python script to generate and send newsletters with Mobilizon events via Jinja2 templates and Brevo email service.
+Python script that turns the upcoming events of a [Mobilizon](https://joinmobilizon.org/) instance into an HTML newsletter and sends it with [Brevo](https://www.brevo.com/).
 
 ## Screenshot
 
@@ -8,24 +8,18 @@ Automated Python script to generate and send newsletters with Mobilizon events v
 
 ## About
 
-This project was created for the French Mobilizon instance ["Le Kalepin"](https://lekalepin.fr) - a cultural agenda for the Monts du Lyonnais region in France. While the script can be adapted for other Mobilizon instances, you'll need to translate the newsletter template and adjust the date formatting to match your locale.
+Built for [Le Kalepin](https://lekalepin.fr), the Mobilizon instance of [La Fabrik](https://lafabrik-moly.fr/) (cultural agenda of the Monts du Lyonnais, France). Every Kalepin-specific value is a default you can override from the environment, so the same image works for any other Mobilizon instance. Dates are written in French; see [Adapting](#adapting-for-other-mobilizon-instances) for other languages.
 
-## Description
+## How it works
 
-This script fetches upcoming events from Mobilizon's GraphQL API, generates an HTML newsletter using Jinja2 templates, and sends it via Brevo email service.
-
-## Features
-
-- Automatic event fetching via Mobilizon API
-- HTML newsletter generation with customizable Jinja2 templates
-- Event description cleaning and truncation
-- UTC to Europe/Paris timezone conversion
-- Inline CSS for email compatibility
-- Brevo integration with test mode support
+1. Queries the Mobilizon GraphQL API for events starting in the next `NEWSLETTER_DAYS` days
+2. Cleans and truncates descriptions, formats dates in the configured timezone, groups events by day
+3. Renders `newsletter_template.html` (Jinja2) to `newsletter_events.html`
+4. Creates a Brevo campaign from that HTML and sends it to the list (or a test address with `--test`)
 
 ## Installation
 
-### Local Setup
+### Local
 
 ```bash
 pip install -r requirements.txt
@@ -38,7 +32,7 @@ docker build -t newsletter-kalepin .
 docker run --env-file .env newsletter-kalepin
 ```
 
-### Pre-built Image
+### Pre-built image
 
 ```bash
 docker pull ghcr.io/cleming/newsletter-kalepin:main
@@ -47,83 +41,63 @@ docker run --env-file .env ghcr.io/cleming/newsletter-kalepin:main
 
 ## Configuration
 
-Create a `.env` file with the following variables:
+Copy `.env.example` to `.env`. Required:
 
-```env
-BREVO_API_KEY=your_brevo_api_key
-BREVO_SENDER_EMAIL=your_sender_email
-BREVO_LIST_ID=your_list_id
-```
+| Variable | Description |
+|---|---|
+| `BREVO_API_KEY` | Brevo API key |
+| `BREVO_SENDER_EMAIL` | Sender address (must be validated in Brevo) |
+| `BREVO_LIST_ID` | Brevo contact list to send to |
+| `BREVO_TEST_EMAIL` | Recipient of `--test` runs (required only for `--test`). Must be an existing Brevo contact |
 
-### Adapting for Other Mobilizon Instances
+Optional, defaults are Le Kalepin:
 
-To use this script with a different Mobilizon instance:
-
-1. Change `MOBILIZON_API_URL` in `script.py` to your instance's API endpoint
-2. Update the newsletter template (`newsletter_template.html`) with your preferred language
-3. Modify the date formatting in `prepare_events_for_template()` function (currently uses French day/month names)
-4. Adjust timezone conversion if needed (currently converts to Europe/Paris)
+| Variable | Default | Used for |
+|---|---|---|
+| `MOBILIZON_URL` | `https://lekalepin.fr` | API endpoint (`<url>/api`) and footer link |
+| `NEWSLETTER_DAYS` | `12` | Time window, in days from now |
+| `NEWSLETTER_TIMEZONE` | `Europe/Paris` | Timezone of displayed dates |
+| `NEWSLETTER_SUBJECT` | `Kalepin : les prochains événements` | Email subject and campaign name |
+| `NEWSLETTER_TAG` | `Newsletter Kalepin` | Brevo campaign tag (`[TEST]` appended in test mode) |
+| `NEWSLETTER_TEMPLATE` | `newsletter_template.html` | Template file, relative to the script |
+| `BRAND_NAME` | `Le Kalepin` | Sender name, button label, footer |
+| `BRAND_LOGO_URL` | Kalepin logo | Header image (230px wide) |
+| `BRAND_TITLE` | `Les prochains événements des Monts du Lyonnais` | Header title |
+| `BRAND_COLOR` | `#4B64F2` | Header, buttons, links |
+| `BRAND_ACCENT_COLOR` | `#ff7105` | Date badge |
 
 ## Usage
 
-### Normal mode
 ```bash
-python script.py
+python script.py          # send the campaign to BREVO_LIST_ID
+python script.py --test   # create the campaign and send it only to BREVO_TEST_EMAIL
 ```
 
-### Test mode
-```bash
-python script.py --test
-```
+Both modes write `newsletter_events.html` next to the script, which you can open in a browser.
 
-Test mode sends the newsletter only to the configured test email address.
+## Template
 
-## Generated Files
+`newsletter_template.html` receives:
 
-- `newsletter_events.html`: Newsletter with external CSS
-- `newsletter_events_inlined.html`: Newsletter with inline CSS (email-ready)
+- `days`: events grouped by local day, in order: `[{"label": "Jeudi 10 septembre", "events": [...]}, ...]`
+- each event has `title`, `description` (text, 150 chars max, cut on a word), `begins` (aware datetime), `day_label`, `time` (`"19h30"`, empty for events starting at midnight), `until` (`"jusqu'au 13 septembre"` for events longer than 24 h, else empty), `picture_url`, `location`, `link`
+- `period`: `"Du 10 au 21 septembre"`, the range covered by the events
+- `brand`: `name`, `url`, `logo_url`, `title`, `color`, `accent_color` (from the `BRAND_*` variables)
 
-## CI/CD
+Email clients are picky: keep styles inline, use only media queries in `<style>`, and give images an HTML `width` attribute (several clients ignore CSS `max-width`).
 
-The project includes a GitHub Action that:
-- Automatically builds Docker image on push to main
-- Pushes to GitHub Container Registry (ghcr.io)
-- Supports AMD64 architecture
-- Optimized caching for fast builds
+## Adapting for other Mobilizon instances
 
-## Template Customization
-
-Modify `newsletter_template.html` to customize the newsletter appearance. The template receives:
-- `events`: formatted events list
-- `date_now`: generation timestamp
-
-## Event Structure
-
-Each event contains:
-- `title`: event title
-- `description`: truncated description (300 chars max)
-- `full_date`: formatted date (currently in French)
-- `picture_url`: image URL (cleaned for Brevo compatibility)
-- `location`: event location
-- `link`: event URL
+Set the `MOBILIZON_URL`, `NEWSLETTER_*` and `BRAND_*` variables. To change the layout, point `NEWSLETTER_TEMPLATE` to your own template (mount it into the container). For another language, translate the template texts and the `JOURS` / `MOIS` lists in `script.py`.
 
 ## Development
 
-### Linting
-
-The project uses Black, isort, flake8, and mypy for code quality:
-
 ```bash
-black script.py
-isort script.py
-flake8 script.py
-mypy script.py
+pip install -r requirements-dev.txt
+python test_script.py   # or: pytest
+black script.py test_script.py && isort script.py test_script.py && flake8
 ```
 
-Configuration files:
-- `pyproject.toml`: Black and isort settings
-- `.flake8`: Flake8 configuration
+## CI/CD
 
-### Requirements
-
-The project uses pinned dependencies for reproducible builds. Development dependencies (linting tools) are included in `requirements.txt`.
+A GitHub Action builds the Docker image on push to `main` and pushes it to GitHub Container Registry (ghcr.io).
