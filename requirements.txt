@@ -1,6 +1,6 @@
 beautifulsoup4==4.13.4
 brevo-python==1.1.2
-certifi==2025.4.26
+certifi==2026.10.19
 charset-normalizer==3.4.2
 idna==3.10
 Jinja2==3.1.6
