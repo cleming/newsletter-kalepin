@@ -58,8 +58,8 @@ MOIS = [
 ]
 
 GRAPHQL_QUERY = """
-query SearchEventsInWindow($beginsOn: DateTime, $endsOn: DateTime, $limit: Int) {
-  searchEvents(beginsOn: $beginsOn, endsOn: $endsOn, limit: $limit) {
+query SearchEventsInWindow($beginsOn: DateTime, $limit: Int) {
+  searchEvents(beginsOn: $beginsOn, limit: $limit, sortBy: START_TIME_ASC) {
     total
     elements {
       __typename
@@ -98,7 +98,7 @@ def get_time_window(days=DAYS_AHEAD):
 
 
 def fetch_events(begins, ends, limit=QUERY_LIMIT):
-    variables = {"beginsOn": to_iso(begins), "endsOn": to_iso(ends), "limit": limit}
+    variables = {"beginsOn": to_iso(begins), "limit": limit}
     resp = requests.post(
         f"{MOBILIZON_URL}/api",
         json={"query": GRAPHQL_QUERY, "variables": variables},
