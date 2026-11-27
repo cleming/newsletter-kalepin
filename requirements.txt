@@ -2,7 +2,7 @@ beautifulsoup4==4.13.4
 brevo-python==1.1.2
 certifi==2025.4.26
 charset-normalizer==3.4.2
-idna==3.10
+idna==3.15
 Jinja2==3.1.6
 MarkupSafe==3.0.2
 python-dateutil==2.9.0.post0
